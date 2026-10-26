@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buscaminas Supremo - Editor Avanzado</title>
+  <style>
+    :root {
+      --bg-color: #f0f2f5;
+      --card-bg: #ffffff;
+      --border-color: #ccc;
+      --cell-unrevealed: #e4e6eb;
+      --cell-revealed: #ffffff;
+      --cell-hover: #d8dadf;
+      --text-color: #333;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: var(--text-color);
+      padding: 20px;
+    }
+
+    .game-container {
+      background: var(--card-bg);
+      padding: 24px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+      text-align: center;
+      max-width: 95vw;
+    }
+
+    h1 {
+      margin-bottom: 15px;
+      font-size: 28px;
+    }
+
+    .controls {
+      margin-bottom: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+    }
+
+    select, input, .btn {
+      padding: 8px 12px;
+      font-size: 14px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      outline: none;
+    }
+
+    select, .btn {
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .btn-primary {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      transition: background 0.2s;
+    }
+
+    .btn-primary:hover {
+      background-color: #0056b3;
+    }
+
+    .god-mode-container {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: bold;
+      font-size: 14px;
+      cursor: pointer;
+      background: #fff3cd;
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: 1px solid #ffeeba;
+    }
+
+    .god-mode-container input {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
+    .custom-panel {
+      display: none;
+      flex-direction: column;
+      background: #f8f9fa;
+      padding: 16px;
+      border-radius: 12px;
+      margin-bottom: 15px;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid #e4e6eb;
+    }
+
+    .custom-inputs {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .custom-panel label {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .custom-panel input[type="number"] {
+      width: 60px;
+      text-align: center;
+    }
+
+    .editor-modes {
+      display: flex;
+      gap: 10px;
+      margin-top: 5px;
+    }
+
+    .btn-mode {
+      border: 2px solid transparent;
+      transition: all 0.2s;
+    }
+
+    .btn-mode.active {
+      border-color: #333;
+      transform: scale(1.05);
+    }
+
+    .btn-green { background-color: #28a745; color: white; }
+    .btn-red { background-color: #dc3545; color: white; }
+
+    .preview-wrapper {
+      max-width: 100%;
+      max-height: 200px;
+      overflow: auto;
+      background: #eee;
+      padding: 4px;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+
+    #preview-grid {
+      display: grid;
+      gap: 1px;
+    }
+
+    .p-cell {
+      width: 18px;
+      height: 18px;
+      background-color: #fff;
+      cursor: pointer;
+      border-radius: 1px;
+    }
+    .p-cell:hover { background-color: #e4e6eb; }
+    .p-cell.forced-safe { background-color: #28a745 !important; }
+    .p-cell.forced-mine { background-color: #dc3545 !important; }
+
+    .scoreboard {
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      margin-bottom: 15px;
+      font-weight: bold;
+      font-size: 18px;
+      background: #f1f3f5;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    .grid-wrapper {
+      max-width: 100%;
+      overflow: auto;
+      margin: 0 auto;
+      border-radius: 6px;
+      box-shadow: inset 0 0 4px rgba(0,0,0,0.1);
+    }
+
+    #grid {
+      display: grid;
+      gap: 2px;
+      background-color: var(--border-color);
+      padding: 2px;
+      user-select: none;
+    }
+
+    .cell {
+      background-color: var(--cell-unrevealed);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 2px;
+      transition: background 0.1s;
+      width: 32px;
+      height: 32px;
+    }
+
+    .cell:hover:not(.revealed) {
+      background-color: var(--cell-hover);
+    }
+
+    .cell.revealed {
+      background-color: var(--cell-revealed);
+      cursor: default;
+    }
+
+    .cell.mine { background-color: #f8d7da; }
+    .cell.flagged { background-color: #ffeeba; }
+
+    .c-1 { color: #004bff; }
+    .c-2 { color: #1e7e34; }
+    .c-3 { color: #bd2130; }
+    .c-4 { color: #721c24; }
+    .c-5 { color: #ff8c00; }
+    .c-6 { color: #00ced1; }
+    .c-7 { color: #000000; }
+    .c-8 { color: #808080; }
+
+    .instructions {
+      margin-top: 15px;
+      font-size: 13px;
+      color: #666;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="game-container">
+    <h1>Buscaminas Supremo 💣</h1>
+    
+    <div class="controls">
+      <select id="difficulty-select">
+        <option value="easy">Principiante (9x9 - 10 minas)</option>
+        <option value="medium">Intermedio (16x16 - 40 minas)</option>
+        <option value="hard">Avanzado (30x16 - 99 minas)</option>
+        <option value="custom">Personalizado ⚙️</option>
+      </select>
+      
+      <label class="god-mode-container">
+        <input type="checkbox" id="god-mode-check"> Inmortalidad 🛡️
+      </label>
+
+      <button class="btn btn-primary" id="reset-btn">Reiniciar / Iniciar</button>
+    </div>
+
+    <div class="custom-panel" id="custom-panel">
+      <div class="custom-inputs">
+        <label>Filas: <input type="number" id="custom-rows" value="10" min="5" max="50"></label>
+        <label>Columnas: <input type="number" id="custom-cols" value="10" min="5" max="50"></label>
+        <label>Minas: <input type="number" id="custom-mines" value="15" min="0"></label>
+      </div>
+      
+      <div class="editor-modes">
+        <button class="btn btn-mode btn-green active" id="btn-mode-safe">🟩 Forzar Segura</button>
+        <button class="btn btn-mode btn-red" id="btn-mode-mine">🟥 Forzar Bomba</button>
+      </div>
+      <div style="font-size: 11px; color:#555;">Zonas 🟩 forzadas no se dispersarán si caen en vacío.</div>
+      
+      <div class="preview-wrapper">
+        <div id="preview-grid"></div>
+      </div>
+    </div>
+
+    <div class="scoreboard">
+      <div>Restantes: <span id="mines-count">10</span> 🚩</div>
+      <div>Tiempo: <span id="timer">0</span>s ⏱️</div>
+    </div>
+
+    <div class="grid-wrapper">
+      <div id="grid"></div>
+    </div>
+
+    <div class="instructions">
+      <p>🖱️ <strong>Click Izquierdo:</strong> Revelar | 🚩 <strong>Click Derecho:</strong> Marcar Bandera</p>
+    </div>
+  </div>
+  <script>
+    const PRESETS = {
+      easy: { rows: 9, cols: 9, mines: 10 },
+      medium: { rows: 16, cols: 16, mines: 40 },
+      hard: { rows: 16, cols: 30, mines: 99 }
+    };
+
+    let rows, cols, totalMines;
+    let board = [];
+    let minesLeft = 0;
+    let gameOver = false;
+    let revealedCount = 0;
+    
+    let timerInterval = null;
+    let timeElapsed = 0;
+    let gameStarted = false;
+
+    let customMapRules = {}; 
+    let currentEditorMode = 'safe'; 
+
+    const gridElement = document.getElementById('grid');
+    const minesCountElement = document.getElementById('mines-count');
+    const timerElement = document.getElementById('timer');
+    const resetBtn = document.getElementById('reset-btn');
+    const difficultySelect = document.getElementById('difficulty-select');
+    const customPanel = document.getElementById('custom-panel');
+    const godModeCheck = document.getElementById('god-mode-check');
+    
+    const previewGrid = document.getElementById('preview-grid');
+    const btnModeSafe = document.getElementById('btn-mode-safe');
+    const btnModeMine = document.getElementById('btn-mode-mine');
+    const customRowsInput = document.getElementById('custom-rows');
+    const customColsInput = document.getElementById('custom-cols');
+    const customMinesInput = document.getElementById('custom-mines');
+
+    btnModeSafe.addEventListener('click', () => {
+      currentEditorMode = 'safe';
+      btnModeSafe.classList.add('active');
+      btnModeMine.classList.remove('active');
+    });
+    btnModeMine.addEventListener('click', () => {
+      currentEditorMode = 'mine';
+      btnModeMine.classList.add('active');
+      btnModeSafe.classList.remove('active');
+    });
+
+    customRowsInput.addEventListener('input', updatePreviewGrid);
+    customColsInput.addEventListener('input', updatePreviewGrid);
+
+    difficultySelect.addEventListener('change', () => {
+      if (difficultySelect.value === 'custom') {
+        customPanel.style.display = 'flex';
+        updatePreviewGrid();
+      } else {
+        customPanel.style.display = 'none';
+        initGame();
+      }
+    });
+
+    resetBtn.addEventListener('click', initGame);
+    
+    // Arrancar el juego por primera vez de forma automática
+    initGame();
+
+    function updatePreviewGrid() {
+      previewGrid.innerHTML = '';
+      customMapRules = {};
+      let pRows = parseInt(customRowsInput.value) || 10;
+      let pCols = parseInt(customColsInput.value) || 10;
+      if (pRows < 5) pRows = 5; if (pRows > 50) pRows = 50;
+      if (pCols < 5) pCols = 5; if (pCols > 50) pCols = 50;
+
+      previewGrid.style.gridTemplateColumns = `repeat(${pCols}, 18px)`;
+
+      for (let r = 0; r < pRows; r++) {
+        for (let c = 0; c < pCols; c++) {
+          const pCell = document.createElement('div');
+          pCell.classList.add('p-cell');
+          const key = `${r},${c}`;
+
+          pCell.addEventListener('click', () => {
+            if (pCell.classList.contains('forced-' + currentEditorMode)) {
+              pCell.className = 'p-cell';
+              delete customMapRules[key];
+            } else {
+              pCell.className = 'p-cell forced-' + currentEditorMode;
+              customMapRules[key] = currentEditorMode;
+            }
+          });
+          previewGrid.appendChild(pCell);
+        }
+      }
+    }
+
+    function initGame() {
+      clearInterval(timerInterval);
+      timeElapsed = 0;
+      timerElement.textContent = 0;
+      gameStarted = false;
+
+      const mode = difficultySelect.value;
+      if (mode === 'custom') {
+        rows = parseInt(customRowsInput.value) || 10;
+        cols = parseInt(customColsInput.value) || 10;
+        totalMines = parseInt(customMinesInput.value);
+        if (isNaN(totalMines)) totalMines = 15;
+        
+        if (rows < 5) rows = 5; if (rows > 50) rows = 50;
+        if (cols < 5) cols = 5; if (cols > 50) cols = 50;
+        
+        const maxMines = rows * cols;
+        if (totalMines > maxMines) totalMines = maxMines;
+        if (totalMines < 0) totalMines = 0;
+      } else {
+        rows = PRESETS[mode].rows;
+        cols = PRESETS[mode].cols;
+        totalMines = PRESETS[mode].mines;
+      }
+
+      gridElement.innerHTML = '';
+      gridElement.style.gridTemplateColumns = `repeat(${cols}, 32px)`;
+      gridElement.style.gridTemplateRows = `repeat(${rows}, 32px)`;
+
+      board = [];
+      gameOver = false;
+      revealedCount = 0;
+
+      for (let r = 0; r < rows; r++) {
+        board[r] = [];
+        for (let c = 0; c < cols; c++) {
+          board[r][c] = {
+            row: r, col: c, isMine: false, isRevealed: false,
+            isFlagged: false, neighborMines: 0, element: null,
+            isForcedSafe: false 
+          };
+        }
+      }
+
+      let minesPlaced = 0;
+
+      if (mode === 'custom') {
+        for (let r = 0; r < rows; r++) {
+          for (let c = 0; c < cols; c++) {
+            const rule = customMapRules[`${r},${c}`];
+            if (rule === 'mine' && minesPlaced < totalMines) {
+              board[r][c].isMine = true;
+              minesPlaced++;
+            } else if (rule === 'safe') {
+              board[r][c].isForcedSafe = true; 
+            }
+          }
+        }
+      }
+
+      let attempts = 0;
+      const maxAttempts = rows * cols * 5; 
+      while (minesPlaced < totalMines && attempts < maxAttempts) {
+        attempts++;
+        let r = Math.floor(Math.random() * rows);
+        let c = Math.floor(Math.random() * cols);
+        
+        const rule = mode === 'custom' ? customMapRules[`${r},${c}`] : null;
+        
+        if (!board[r][c].isMine && rule !== 'safe') {
+          board[r][c].isMine = true;
+          minesPlaced++;
+        }
+      }
+
+      totalMines = minesPlaced;
+      minesLeft = totalMines;
+      minesCountElement.textContent = minesLeft;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (!board[r][c].isMine) {
+            board[r][c].neighborMines = countNeighborMines(r, c);
+          }
+        }
+      }
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const cellElement = document.createElement('div');
+          cellElement.classList.add('cell');
+          
+          cellElement.addEventListener('click', () => handleLeftClick(r, c));
+          cellElement.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            handleRightClick(r, c);
+          });
+
+          gridElement.appendChild(cellElement);
+          board[r][c].element = cellElement;
+        }
+      }
+    }
+
+    function countNeighborMines(row, col) {
+      let count = 0;
+      for (let dr = -1; dr <= 1; dr++) {
+        for (let dc = -1; dc <= 1; dc++) {
+          let nr = row + dr;
+          let nc = col + dc;
+          if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+            if (board[nr][nc].isMine) count++;
+          }
+        }
+      }
+      return count;
+    }
+
+    function startTimer() {
+      gameStarted = true;
+      timerInterval = setInterval(() => {
+        timeElapsed++;
+        timerElement.textContent = timeElapsed;
+      }, 1000);
+    }
+
+    function handleLeftClick(r, c) {
+      if (gameOver || board[r][c].isRevealed || board[r][c].isFlagged) return;
+
+      if (!gameStarted) startTimer();
+
+      const isGodMode = godModeCheck.checked;
+
+      if (board[r][c].isMine && !isGodMode) {
+        revealCell(r, c, false); 
+        endGame(false);
+        return;
+      }
+
+      revealCell(r, c, true);
+
+      const targetCount = isGodMode ? (rows * cols) : ((rows * cols) - totalMines);
+      if (revealedCount === targetCount) {
+        endGame(true);
+      }
+    }
+
+    function handleRightClick(r, c) {
+      if (gameOver || board[r][c].isRevealed) return;
+      if (!gameStarted) startTimer();
+
+      const cell = board[r][c];
+      if (!cell.isFlagged) {
+        cell.isFlagged = true;
+        cell.element.classList.add('flagged');
+        cell.element.textContent = '🚩';
+        minesLeft--;
+      } else {
+        cell.isFlagged = false;
+        cell.element.classList.remove('flagged');
+        cell.element.textContent = '';
+        minesLeft++;
+      }
+      minesCountElement.textContent = minesLeft;
+    }
+
+    function revealCell(r, c, allowCascade) {
+      const cell = board[r][c];
+      if (cell.isRevealed || cell.isFlagged) return;
+
+      cell.isRevealed = true;
+      cell.element.classList.add('revealed');
+      revealedCount++;
+
+      if (cell.isMine) {
+        cell.element.classList.add('mine');
+        cell.element.textContent = '💣';
+        return;
+      }
+
+      if (cell.neighborMines > 0) {
+        cell.element.textContent = cell.neighborMines;
+        cell.element.classList.add(`c-${cell.neighborMines}`);
+      } else {
+        if (cell.isForcedSafe || !allowCascade) {
+          return; 
+        }
+
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            let nr = r + dr;
+            let nc = c + dc;
+            if (nr >= 0 && nr < rows && nc >= 0 && nc < cols) {
+              revealCell(nr, nc, true);
+            }
+          }
+        }
+      }
+    }
+
+    function endGame(isWin) {
+      gameOver = true;
+      clearInterval(timerInterval);
+      
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          if (board[r][c].isMine) {
+            board[r][c].element.classList.add('revealed');
+            if (!board[r][c].isFlagged) {
+              board[r][c].element.textContent = '💣';
+            }
+          }
+        }
+      }
+
+      setTimeout(() => {
+        if (isWin) {
+          alert(`¡Victoria Suprema! 🎉 Completado en ${timeElapsed} segundos.`);
+        } else {
+          alert('💥 ¡BOOM! Has detonado una mina. Inténtalo de nuevo.');
+        }
+      }, 150);
+    }
+  </script>
+</body>
+</html>
